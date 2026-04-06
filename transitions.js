@@ -3,9 +3,9 @@
 // ============================================================
 
 // ------ Global prank params (read once, used everywhere) ----
-const urlParams  = new URLSearchParams(window.location.search);
-window.PRANK_FROM = urlParams.get('from') || 'A friend';   // sender name
-window.PRANK_TO   = urlParams.get('to')   || 'You';        // recipient name
+const urlParams   = new URLSearchParams(window.location.search);
+window.PRANK_FROM = urlParams.get('from') || 'A friend';
+window.PRANK_TO   = urlParams.get('to')   || 'You';
 
 // ------ Show the right screen on load -----------------------
 document.addEventListener('DOMContentLoaded', () => {
@@ -17,6 +17,10 @@ document.addEventListener('DOMContentLoaded', () => {
     fromTag.style.display = 'block';
   }
 
+  // Wire up Screen 1 tap button → Screen 2
+  const tapBtn = document.getElementById('tap-btn');
+  if (tapBtn) tapBtn.addEventListener('click', () => showScreen(2));
+
   // Always start on Screen 1
   showScreen(1);
 });
@@ -25,16 +29,14 @@ document.addEventListener('DOMContentLoaded', () => {
 /**
  * showScreen(n)
  * Hides every screen, then fades in screen-n.
- * Call this from game.js, loading.js, or any inline handler.
+ * Automatically starts the egg game when showing Screen 2.
  *
- * @param {number} n  — screen number (1‑5)
+ * @param {number} n  — screen number (1–5)
  */
 function showScreen(n) {
   const all = document.querySelectorAll('.screen');
 
-  all.forEach(s => {
-    s.classList.remove('active');
-  });
+  all.forEach(s => s.classList.remove('active'));
 
   const target = document.getElementById(`screen-${n}`);
   if (!target) {
@@ -42,14 +44,13 @@ function showScreen(n) {
     return;
   }
 
-  // Small delay so the fade-out finishes before fade-in starts
   setTimeout(() => {
     target.classList.add('active');
+
+    // Start the egg game as soon as Screen 2 is visible
+    if (n === 2) initGame();
+
   }, 80);
 
   console.log(`▶ Screen ${n} active`);
-  setTimeout(() => {
-    target.classList.add('active');
-    if (n === 2) initGame();  // ← add this line
-  }, 80);
 }

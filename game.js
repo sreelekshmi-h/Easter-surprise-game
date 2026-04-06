@@ -12,7 +12,6 @@ const EGG_RADIUS  = 34;     // half-height of egg hitbox
 let canvas, ctx;
 let eggs       = [];
 let spawnTimer = null;
-let animFrame  = null;
 let gameActive = false;
 
 // ------ Audio -----------------------------------------------
@@ -20,7 +19,7 @@ function playSound(src) {
   try {
     const a = new Audio(src);
     a.volume = 0.7;
-    a.play().catch(() => {}); // silently ignore autoplay blocks
+    a.play().catch(() => {});
   } catch(e) {}
 }
 
@@ -28,7 +27,7 @@ function playSound(src) {
 function createEgg() {
   const colorIdx = Math.floor(Math.random() * EGG_COLORS.length);
   return {
-    x      : EGG_RADIUS + Math.random() * (canvas.width  - EGG_RADIUS * 2),
+    x      : EGG_RADIUS + Math.random() * (canvas.width - EGG_RADIUS * 2),
     y      : -EGG_RADIUS,
     vy     : EGG_MIN_SPD + Math.random() * (EGG_MAX_SPD - EGG_MIN_SPD),
     color  : EGG_COLORS[colorIdx],
@@ -63,7 +62,7 @@ function drawEgg(e) {
   ctx.fillStyle = e.color;
   ctx.fill();
 
-  // Stripe decoration
+  // Stripe
   ctx.save();
   ctx.beginPath();
   ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
@@ -99,14 +98,14 @@ function drawPop(e) {
   ctx.globalAlpha = Math.max(0, 1 - r / 90);
   ctx.stroke();
 
-  // Particles flying out
+  // Particles
   for (let i = 0; i < 8; i++) {
     const angle = (i / 8) * Math.PI * 2;
     const px = Math.cos(angle) * r * 0.85;
     const py = Math.sin(angle) * r * 0.85;
     ctx.beginPath();
     ctx.arc(px, py, 5, 0, Math.PI * 2);
-    ctx.fillStyle = EGG_COLORS[i % EGG_COLORS.length];
+    ctx.fillStyle   = EGG_COLORS[i % EGG_COLORS.length];
     ctx.globalAlpha = Math.max(0, 1 - r / 90);
     ctx.fill();
   }
@@ -138,7 +137,7 @@ function gameLoop() {
     return e.alive;
   });
 
-  animFrame = requestAnimationFrame(gameLoop);
+  requestAnimationFrame(gameLoop);
 }
 
 // ------ Tap / click detection --------------------------------
@@ -158,6 +157,7 @@ function handleTap(clientX, clientY) {
     const rx = EGG_RADIUS * 0.72 * e.scale;
     const ry = EGG_RADIUS * e.scale;
 
+    // Ellipse hit test
     if ((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) <= 1) {
       e.alive   = false;
       e.popping = true;
@@ -166,6 +166,7 @@ function handleTap(clientX, clientY) {
       playSound('assets/crack.mp3');
       spawnConfetti(clientX, clientY);
 
+      // Stop the game, then move to Screen 3
       gameActive = false;
       clearInterval(spawnTimer);
 
@@ -174,23 +175,18 @@ function handleTap(clientX, clientY) {
         startLoading();
       }, 700);
 
-      return;
+      return; // only pop one egg per tap
     }
   }
 }
 
-canvas.addEventListener('click', e => handleTap(e.clientX, e.clientY));
-canvas.addEventListener('touchstart', e => {
-  e.preventDefault();
-  const t = e.touches[0];
-  handleTap(t.clientX, t.clientY);
-}, { passive: false });
-
-// ------ DOM Confetti burst ----------------------------------
+// ------ DOM confetti burst ----------------------------------
 function spawnConfetti(cx, cy) {
   const container = document.getElementById('burst-container');
+  if (!container) return;
+
   for (let i = 0; i < 28; i++) {
-    const dot = document.createElement('div');
+    const dot   = document.createElement('div');
     dot.className = 'confetti-dot';
     const angle = Math.random() * 360;
     const dist  = 60 + Math.random() * 120;
@@ -206,13 +202,14 @@ function spawnConfetti(cx, cy) {
   }
 }
 
-// ------ Init (called by transitions.js when Screen 2 opens) --
+// ------ Init — called by transitions.js when Screen 2 opens --
 function initGame() {
   canvas     = document.getElementById('egg-canvas');
   ctx        = canvas.getContext('2d');
   eggs       = [];
   gameActive = true;
 
+  // Fit canvas to window
   function resize() {
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -220,9 +217,19 @@ function initGame() {
   resize();
   window.addEventListener('resize', resize);
 
+  // ✅ Event listeners are INSIDE initGame so canvas is guaranteed to exist
+  canvas.addEventListener('click', e => handleTap(e.clientX, e.clientY));
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const t = e.touches[0];
+    handleTap(t.clientX, t.clientY);
+  }, { passive: false });
+
+  // Spawn two eggs immediately
   eggs.push(createEgg());
   eggs.push(createEgg());
 
+  // Then keep spawning
   spawnTimer = setInterval(() => {
     if (gameActive) eggs.push(createEgg());
   }, SPAWN_RATE);
