@@ -1,6 +1,7 @@
 // ============================================================
 //  game.js  —  Egg Falling Game (Cinematic Slow-Cracking Final)
 //  Sync: 800ms Slow Creeping Crack -> Ramping Jitter -> Ribbon Boom
+//  + Bunny encouragement popup system
 // ============================================================
 
 // ------ Constants -------------------------------------------
@@ -10,7 +11,7 @@ const PATTERNS    = ['stripes','zigzag','dots','diamonds'];
 const SPAWN_RATE  = 600;
 const EGG_MIN_SPD = 3.2;
 const EGG_MAX_SPD = 6.4;
-const ZOOM_SPEED  = 0.12; 
+const ZOOM_SPEED  = 0.12;
 
 let canvas, ctx;
 let eggs       = [];
@@ -20,7 +21,153 @@ let grassTufts = [];
 let spawnTimer = null;
 let gameActive = false;
 let GROUND_Y   = 0;
-let focusedEgg = null; 
+let focusedEgg = null;
+
+// ------ Bunny System ----------------------------------------
+const BUNNY_MESSAGES = [
+  "Come on! You can do it! 🐣",
+  "Try again, you've got this! 💪",
+  "You're so close, I know it! 🌸",
+  "Don't give up! 🐰",
+  "Keep tapping! One will crack! ✨",
+  "You can do it, I believe in you! 🥚",
+];
+
+let bunnyEl       = null;   // the DOM element
+let bunnyTimer    = null;   // interval for scheduling popups
+let bunnyVisible  = false;  // is bunny currently up
+let bunnyDone     = false;  // set true once egg is tapped — never shows again
+
+function createBunnyEl() {
+  // build the bunny + speech bubble DOM element once
+  const wrap = document.createElement('div');
+  wrap.id = 'bunny-wrap';
+  wrap.style.cssText = `
+    position: fixed;
+    bottom: -160px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+    z-index: 999;
+    transition: bottom 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+  `;
+
+  // speech bubble
+  const bubble = document.createElement('div');
+  bubble.id = 'bunny-bubble';
+  bubble.style.cssText = `
+    background: #fff;
+    border: 3px solid #ff6eb4;
+    border-radius: 18px;
+    padding: 10px 18px;
+    font-family: 'Fredoka One', 'Nunito', sans-serif;
+    font-size: clamp(13px, 3.5vw, 17px);
+    color: #c2185b;
+    text-align: center;
+    white-space: nowrap;
+    margin-bottom: 6px;
+    box-shadow: 0 4px 18px rgba(255,110,180,0.25);
+    position: relative;
+  `;
+
+  // bubble tail pointing down toward bunny
+  const tail = document.createElement('div');
+  tail.style.cssText = `
+    width: 0; height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 12px solid #ff6eb4;
+    position: absolute;
+    bottom: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+  `;
+  bubble.appendChild(tail);
+
+  // bunny gif
+  const img = document.createElement('img');
+  img.src = 'assets/Baby_Rabbit.gif';
+  img.style.cssText = `
+    width: clamp(70px, 18vw, 110px);
+    height: auto;
+    display: block;
+    margin-top: 8px;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.18));
+  `;
+
+  wrap.appendChild(bubble);
+  wrap.appendChild(img);
+  document.body.appendChild(wrap);
+
+  bunnyEl = wrap;
+}
+
+function showBunny() {
+  if (bunnyDone || bunnyVisible || !bunnyEl) return;
+
+  // pick random message
+  const msg = BUNNY_MESSAGES[Math.floor(Math.random() * BUNNY_MESSAGES.length)];
+  const bubble = document.getElementById('bunny-bubble');
+  // update text but keep tail element
+  const tail = bubble.querySelector('div');
+  bubble.childNodes.forEach(n => { if (n.nodeType === Node.TEXT_NODE) n.remove(); });
+  bubble.insertBefore(document.createTextNode(msg), tail);
+
+  // random horizontal position — keep bunny within screen bounds
+  const bw  = 130; // approx bunny wrap width
+  const minX = bw / 2 + 10;
+  const maxX = window.innerWidth - bw / 2 - 10;
+  const posX = minX + Math.random() * (maxX - minX);
+  bunnyEl.style.left = `${posX}px`;
+  bunnyEl.style.transform = 'translateX(-50%)';
+
+  // slide up
+  bunnyVisible = true;
+  // small delay so position sets before transition fires
+  requestAnimationFrame(() => {
+    bunnyEl.style.bottom = '0px';
+  });
+
+  // slide back down after 2.8s
+  setTimeout(() => hideBunny(), 2800);
+}
+
+function hideBunny() {
+  if (!bunnyEl) return;
+  bunnyEl.style.bottom = '-160px';
+  setTimeout(() => { bunnyVisible = false; }, 600); // wait for slide-down to finish
+}
+
+function stopBunny() {
+  // called when egg is tapped — hide immediately and never show again
+  bunnyDone = true;
+  clearInterval(bunnyTimer);
+  if (bunnyEl) {
+    bunnyEl.style.transition = 'bottom 0.3s ease';
+    bunnyEl.style.bottom = '-160px';
+    setTimeout(() => { if (bunnyEl) bunnyEl.remove(); bunnyEl = null; }, 400);
+  }
+}
+
+function startBunnyScheduler() {
+  createBunnyEl();
+
+  // first popup after 5–8s so player has time to try first
+  const firstDelay = 5000 + Math.random() * 3000;
+  setTimeout(() => {
+    if (!bunnyDone) {
+      showBunny();
+      // then repeat every 5–9s
+      bunnyTimer = setInterval(() => {
+        if (bunnyDone) { clearInterval(bunnyTimer); return; }
+        showBunny();
+      }, 5000 + Math.random() * 4000);
+    }
+  }, firstDelay);
+}
 
 // ------ Audio — Preloaded -----------------------------------
 const SOUNDS = {};
@@ -37,7 +184,7 @@ function playSound(name) {
   try {
     const s = SOUNDS[name];
     if (!s) return;
-    s.currentTime = 0; 
+    s.currentTime = 0;
     s.volume = 0.7;
     s.play().catch(() => {});
   } catch(e) {}
@@ -137,8 +284,7 @@ function drawScene() {
   ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
   drawSun();
   drawClouds();
-  
-  // Rolling Hills
+
   ctx.beginPath();
   ctx.moveTo(0, GROUND_Y+5);
   ctx.bezierCurveTo(W*0.12,GROUND_Y-22, W*0.28,GROUND_Y-28, W*0.42,GROUND_Y-18);
@@ -183,7 +329,6 @@ function drawEgg(e) {
   ctx.translate(e.x, e.y);
   ctx.rotate(e.rotation);
 
-  // Shell Visuals
   ctx.shadowColor = e.color; ctx.shadowBlur = 10;
   ctx.beginPath(); ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);
   ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 3; ctx.stroke();
@@ -191,7 +336,6 @@ function drawEgg(e) {
   ctx.beginPath(); ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);
   ctx.fillStyle = e.color; ctx.fill();
 
-  // Pattern
   ctx.save();
   ctx.beginPath(); ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2); ctx.clip();
   ctx.globalAlpha = 0.52;
@@ -222,31 +366,23 @@ function drawEgg(e) {
   }
   ctx.restore();
 
-  // Gloss
   ctx.globalAlpha = 1;
   ctx.beginPath(); ctx.ellipse(-rx*0.27,-ry*0.3,rx*0.22,ry*0.15,-0.4,0,Math.PI*2);
   ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fill();
 
-  // --- CINEMATIC SLOW-CREEP RADIAL CRACKS ---
   if (e.cracked && e.crackProgress > 0) {
     ctx.save();
     ctx.strokeStyle = `rgba(35, 15, 0, ${0.4 + e.crackProgress * 0.6})`;
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    
-    const numMainCracks = 4; 
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    const numMainCracks = 4;
     for (let i = 0; i < numMainCracks; i++) {
       ctx.beginPath();
       ctx.lineWidth = (4 - i) * e.scale * e.crackProgress;
-      ctx.moveTo(0, 0); 
-      
+      ctx.moveTo(0, 0);
       let curX = 0, curY = 0;
       const angle = (i * (Math.PI * 2) / numMainCracks) + 0.8;
-      
-      // Multi-segment creeping effect
       const totalSegments = 8;
-      const segmentLength = (rx * 1.1 / totalSegments) * e.crackProgress; 
-      
+      const segmentLength = (rx * 1.1 / totalSegments) * e.crackProgress;
       for (let j = 0; j < totalSegments; j++) {
         curX += Math.cos(angle) * segmentLength + (Math.random() - 0.5) * 7;
         curY += Math.sin(angle) * segmentLength + (Math.random() - 0.5) * 7;
@@ -254,13 +390,9 @@ function drawEgg(e) {
       }
       ctx.stroke();
     }
-    
-    // Core white break-point
     ctx.globalAlpha = e.crackProgress;
     ctx.fillStyle = "white";
-    ctx.beginPath();
-    ctx.arc(0,0, 3 * e.crackProgress, 0, Math.PI*2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(0,0, 3 * e.crackProgress, 0, Math.PI*2); ctx.fill();
     ctx.restore();
   }
   ctx.restore();
@@ -310,14 +442,12 @@ function spawnConfetti(tapX, tapY) {
   const container = document.getElementById('burst-container');
   if (!container) return;
 
-  // Surprise text
   const msg = document.createElement('div');
   msg.className = 'surprise-text';
   msg.textContent = '🎁 You found the surprise gift!';
   container.appendChild(msg);
   setTimeout(() => msg.remove(), 3500);
 
-  // Small rectangular confetti bits
   for (let i = 0; i < 90; i++) {
     const bit = document.createElement('div');
     bit.className = 'confetti-dot';
@@ -342,7 +472,6 @@ function spawnConfetti(tapX, tapY) {
     setTimeout(() => bit.remove(), 2200);
   }
 
-  // Curly spiral ribbons (SVG-based)
   for (let i = 0; i < 18; i++) {
     const ns = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(ns, 'svg');
@@ -355,44 +484,32 @@ function spawnConfetti(tapX, tapY) {
     const dy = Math.sin(a * Math.PI / 180) * dist + 300;
     const rot = Math.random() * 1080 - 540;
     const curlType = Math.floor(Math.random() * 3);
-
     svg.setAttribute('viewBox', '0 0 40 40');
     svg.setAttribute('width', size);
     svg.setAttribute('height', size);
     svg.style.cssText = `
-      position:absolute;
-      left:${tapX}px; top:${tapY}px;
-      pointer-events:none;
-      z-index:55;
-      overflow:visible;
+      position:absolute; left:${tapX}px; top:${tapY}px;
+      pointer-events:none; z-index:55; overflow:visible;
       --dx:${dx}px; --dy:${dy}px; --rot:${rot}deg;
       animation: curlyFly 2s cubic-bezier(0.1,0.6,0.35,1) ${delay}ms forwards;
     `;
-
     const path = document.createElementNS(ns, 'path');
     path.setAttribute('fill', 'none');
     path.setAttribute('stroke', color);
     path.setAttribute('stroke-width', '3');
     path.setAttribute('stroke-linecap', 'round');
-
-    // Three curl styles matching the image
     if (curlType === 0) {
-      // tight S-curl spiral
       path.setAttribute('d', 'M20,35 C5,30 5,20 20,20 C35,20 35,10 20,5');
     } else if (curlType === 1) {
-      // looping spiral coil
       path.setAttribute('d', 'M20,38 C8,35 4,25 12,18 C20,11 32,14 30,22 C28,30 18,32 15,26 C12,20 18,16 22,20');
     } else {
-      // wide sweeping curl
       path.setAttribute('d', 'M5,30 C5,15 15,5 25,10 C35,15 38,28 28,33 C18,38 10,32 12,24');
     }
-
     svg.appendChild(path);
     container.appendChild(svg);
     setTimeout(() => svg.remove(), 2500);
   }
 }
-
 
 // ------ Interaction -----------------------------------------
 function handleTap(clientX, clientY) {
@@ -405,7 +522,10 @@ function handleTap(clientX, clientY) {
     const rx = 26*e.scale, ry = 36*e.scale;
     const dx = tx - e.x, dy = ty - e.y;
     if ((dx*dx)/(rx*rx) + (dy*dy)/(ry*ry) <= 1) {
-      focusedEgg = e; gameActive = false; clearInterval(spawnTimer);
+      focusedEgg = e;
+      gameActive = false;
+      clearInterval(spawnTimer);
+      stopBunny();   // ← bunny gone the moment egg is tapped
       setTimeout(() => { showScreen(3); startLoading(); }, 5000);
       return;
     }
@@ -431,25 +551,20 @@ function gameLoop() {
         e.rotation *= 0.8;
         const dist = Math.hypot(targetX - e.x, targetY - e.y);
 
-        // --- CINEMATIC SLOW SEQUENCE ---
         if (dist < 4 && !e.cracked) {
           e.cracked = true; e.crackProgress = 0;
           playSound('crack');
-
-          const crackDuration = 2000; // Slow growth
+          const crackDuration = 2000;
           const intervalStep = 30;
-          
           const crackInterval = setInterval(() => {
             e.crackProgress += (intervalStep / crackDuration);
-            // Intensifying vibration
             const shake = 12 * e.crackProgress;
             e.x += (Math.random()-0.5)*shake; e.y += (Math.random()-0.5)*shake;
             if (e.crackProgress >= 1) { e.crackProgress = 1; clearInterval(crackInterval); }
           }, intervalStep);
-
           setTimeout(() => {
             if (!e.popping) { e.popping = true; playSound('pop'); spawnConfetti(e.x, e.y); }
-          }, crackDuration); 
+          }, crackDuration);
         }
         if (e.popping) { e.popR += 14; drawPop(e); return e.popAlpha > 0; }
         drawEgg(e); return true;
@@ -478,14 +593,25 @@ function initGame() {
   canvas = document.getElementById('egg-canvas');
   ctx = canvas.getContext('2d');
   eggs = []; splats = []; focusedEgg = null; gameActive = true;
+
+  // reset bunny state in case of replay
+  bunnyDone    = false;
+  bunnyVisible = false;
+  if (bunnyEl) { bunnyEl.remove(); bunnyEl = null; }
+  clearInterval(bunnyTimer);
+
   preloadSounds();
+
   function resize() {
     canvas.width = window.innerWidth; canvas.height = window.innerHeight;
     GROUND_Y = canvas.height - 85; buildGrass(); buildClouds();
   }
   resize(); window.addEventListener('resize', resize);
+
   canvas.addEventListener('click', e => handleTap(e.clientX, e.clientY));
   canvas.addEventListener('touchstart', e => { e.preventDefault(); handleTap(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+
   dramaticEntrance();
+  startBunnyScheduler();  // ← start bunny after game begins
   gameLoop();
 }
