@@ -1,3 +1,7 @@
+Gmail	Sree Lekshmi H <sreelekshmih4@gmail.com>
+(no subject)
+Sreelekshmi Harikumar <sreelekshmi.lechu666@gmail.com>	Thu, Apr 9, 2026 at 11:02 AM
+To: Sree Lekshmi H <sreelekshmih4@gmail.com>
 // ============================================================
 //  game.js  —  Egg Falling Game (Cinematic Slow-Cracking Final)
 //  Ground: smooth hills + scattered depth flower meadow
@@ -259,4 +263,274 @@ function drawSimple(f){
   const cx=f.x,cy=f.y-f.stemH,r=f.size,n=5;
   for(let i=0;i<n;i++){
     const a=(i/n)*Math.PI*2; ctx.fillStyle=f.petal; ctx.beginPath();
-    ctx.arc(cx+Math.cos(a)*r*0.9,cy+Math.sin(a)*r*0.9
+    ctx.arc(cx+Math.cos(a)*r*0.9,cy+Math.sin(a)*r*0.9,r*0.62,0,Math.PI*2); ctx.fill();
+  }
+  ctx.fillStyle=f.centre; ctx.beginPath(); ctx.arc(cx,cy,r*0.46,0,Math.PI*2); ctx.fill();
+}
+
+function drawFlower(f){
+  ctx.save(); ctx.globalAlpha=f.alpha;
+  ctx.translate(f.x,f.y); ctx.rotate(f.lean); ctx.translate(-f.x,-f.y);
+  ctx.strokeStyle='#388e3c'; ctx.lineWidth=Math.max(0.8,f.size*0.18); ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(f.x,f.y); ctx.lineTo(f.x,f.y-f.stemH); ctx.stroke();
+  if (f.size>4.5){
+    ctx.fillStyle='#4caf50'; ctx.beginPath();
+    ctx.moveTo(f.x,f.y-f.stemH*0.38);
+    ctx.quadraticCurveTo(f.x+f.size*1.6,f.y-f.stemH*0.52,f.x+f.size*1.2,f.y-f.stemH*0.68);
+    ctx.quadraticCurveTo(f.x+f.size*0.35,f.y-f.stemH*0.54,f.x,f.y-f.stemH*0.38); ctx.fill();
+  }
+  if      (f.type==='daisy')     drawDaisy(f);
+  else if (f.type==='tulip')     drawTulip(f);
+  else if (f.type==='sunflower') drawSunflower(f);
+  else                           drawSimple(f);
+  ctx.restore();
+}
+
+// ------ Draw scene ------------------------------------------
+function drawScene() {
+  const W=canvas.width, H=canvas.height;
+  const sky=ctx.createLinearGradient(0,0,0,GROUND_Y);
+  sky.addColorStop(0,'#87CEEB'); sky.addColorStop(1,'#C9EFFF');
+  ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+  drawSun(); drawClouds();
+
+  // back hill
+  ctx.fillStyle='#c5e8a0'; ctx.beginPath(); ctx.moveTo(-10,H); ctx.lineTo(-10,GROUND_Y+10);
+  ctx.bezierCurveTo(W*0.1,GROUND_Y-55,W*0.28,GROUND_Y-70,W*0.5,GROUND_Y-50);
+  ctx.bezierCurveTo(W*0.72,GROUND_Y-30,W*0.88,GROUND_Y-60,W+10,GROUND_Y-20);
+  ctx.lineTo(W+10,H); ctx.closePath(); ctx.fill();
+
+  // mid hill
+  ctx.fillStyle='#a8d880'; ctx.beginPath(); ctx.moveTo(-10,H); ctx.lineTo(-10,GROUND_Y+5);
+  ctx.bezierCurveTo(W*0.12,GROUND_Y-35,W*0.3,GROUND_Y-48,W*0.48,GROUND_Y-30);
+  ctx.bezierCurveTo(W*0.65,GROUND_Y-12,W*0.8,GROUND_Y-42,W+10,GROUND_Y-8);
+  ctx.lineTo(W+10,H); ctx.closePath(); ctx.fill();
+
+  // front ground — smooth flat plane
+  ctx.fillStyle='#88c860'; ctx.beginPath(); ctx.moveTo(-10,H); ctx.lineTo(-10,GROUND_Y);
+  ctx.bezierCurveTo(W*0.2,GROUND_Y-10,W*0.45,GROUND_Y-4,W*0.65,GROUND_Y-8);
+  ctx.bezierCurveTo(W*0.82,GROUND_Y-12,W*0.93,GROUND_Y-4,W+10,GROUND_Y);
+  ctx.lineTo(W+10,H); ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle='#76b850'; ctx.fillRect(-10,GROUND_Y+2,W+20,H-GROUND_Y);
+
+  flowers.forEach(drawFlower);
+}
+
+// ------ Egg Logic -------------------------------------------
+function createEgg(startY,slow){
+  const ci=Math.floor(Math.random()*EGG_COLORS.length), sc=0.85+Math.random()*0.5;
+  return {
+    x:45+Math.random()*(canvas.width-90),
+    y:startY!==undefined?startY:-(36*sc+Math.random()*80),
+    vy:slow?0.8+Math.random()*1.5:EGG_MIN_SPD+Math.random()*(EGG_MAX_SPD-EGG_MIN_SPD),
+    vx:(Math.random()-0.5)*0.5, color:EGG_COLORS[ci], accent:EGG_ACCENTS[ci],
+    pattern:PATTERNS[Math.floor(Math.random()*4)], scale:sc,
+    rotation:0, rotSpeed:(Math.random()-0.5)*0.04,
+    alive:true, popping:false, cracked:false, crackProgress:0,
+    popR:0, popAlpha:1, acc:0.045,
+  };
+}
+
+function drawEgg(e){
+  const rx=26*e.scale, ry=36*e.scale;
+  ctx.save(); ctx.translate(e.x,e.y); ctx.rotate(e.rotation);
+  ctx.shadowColor=e.color; ctx.shadowBlur=10;
+  ctx.beginPath(); ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);
+  ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=3; ctx.stroke();
+  ctx.shadowBlur=0;
+  ctx.beginPath(); ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2); ctx.fillStyle=e.color; ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2); ctx.clip(); ctx.globalAlpha=0.52;
+  if(e.pattern==='stripes'){
+    ctx.strokeStyle=e.accent; ctx.lineWidth=3.5;
+    for(let i=-3;i<=3;i++){ctx.beginPath();ctx.moveTo(-rx*1.5,i*ry*0.38);ctx.lineTo(rx*1.5,i*ry*0.38);ctx.stroke();}
+  }else if(e.pattern==='zigzag'){
+    ctx.strokeStyle=e.accent; ctx.lineWidth=2.5;
+    for(let row=-2;row<=2;row++){
+      const yb=row*ry*0.42; ctx.beginPath(); let first=true;
+      for(let xi=-rx*1.2;xi<=rx*1.2;xi+=rx*0.35){
+        const yy=yb+(Math.round((xi+rx*1.2)/(rx*0.35))%2===0?-7*e.scale:7*e.scale);
+        first?ctx.moveTo(xi,yy):ctx.lineTo(xi,yy); first=false;
+      } ctx.stroke();
+    }
+  }else if(e.pattern==='dots'){
+    ctx.fillStyle=e.accent; const sp=rx*0.52;
+    for(let row=-2;row<=2;row++) for(let col=-2;col<=2;col++){
+      ctx.beginPath(); ctx.arc(col*sp+(row%2===0?0:sp*0.5),row*sp*0.85,3.5*e.scale,0,Math.PI*2); ctx.fill();
+    }
+  }else{
+    ctx.strokeStyle=e.accent; ctx.lineWidth=2; const sp2=rx*0.6;
+    for(let row=-2;row<=2;row++) for(let col=-2;col<=2;col++){
+      const ox=col*sp2+(row%2===0?0:sp2*0.5),oy=row*sp2*0.75;
+      ctx.beginPath(); ctx.moveTo(ox,oy-7*e.scale); ctx.lineTo(ox+6*e.scale,oy);
+      ctx.lineTo(ox,oy+7*e.scale); ctx.lineTo(ox-6*e.scale,oy); ctx.closePath(); ctx.stroke();
+    }
+  }
+  ctx.restore(); ctx.globalAlpha=1;
+  ctx.beginPath(); ctx.ellipse(-rx*0.27,-ry*0.3,rx*0.22,ry*0.15,-0.4,0,Math.PI*2);
+  ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.fill();
+  if(e.cracked && e.crackProgress>0){
+    ctx.save(); ctx.strokeStyle=`rgba(35,15,0,${0.4+e.crackProgress*0.6})`;
+    ctx.lineJoin='round'; ctx.lineCap='round';
+    for(let i=0;i<4;i++){
+      ctx.beginPath(); ctx.lineWidth=(4-i)*e.scale*e.crackProgress; ctx.moveTo(0,0);
+      let cx2=0,cy2=0; const angle=(i*Math.PI*2/4)+0.8, segLen=(rx*1.1/8)*e.crackProgress;
+      for(let j=0;j<8;j++){cx2+=Math.cos(angle)*segLen+(Math.random()-0.5)*7;cy2+=Math.sin(angle)*segLen+(Math.random()-0.5)*7;ctx.lineTo(cx2,cy2);}
+      ctx.stroke();
+    }
+    ctx.globalAlpha=e.crackProgress; ctx.fillStyle='white';
+    ctx.beginPath(); ctx.arc(0,0,3*e.crackProgress,0,Math.PI*2); ctx.fill(); ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawPop(e){
+  ctx.save(); ctx.translate(e.x,e.y); e.popAlpha=Math.max(0,1-e.popR/100); ctx.globalAlpha=e.popAlpha;
+  for(let ring=0;ring<3;ring++){
+    const r=e.popR*(0.5+ring*0.28); ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2);
+    ctx.strokeStyle=EGG_COLORS[(EGG_COLORS.indexOf(e.color)+ring)%EGG_COLORS.length];
+    ctx.lineWidth=5-ring; ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ------ Effects ---------------------------------------------
+function createSplat(x,color){
+  const blobPts=[],arms=10+Math.floor(Math.random()*5);
+  for(let i=0;i<arms;i++) blobPts.push({a:(i/arms)*Math.PI*2,r:10+Math.random()*14});
+  const whitePts=[],wArms=12+Math.floor(Math.random()*5);
+  for(let i=0;i<wArms;i++) whitePts.push({a:(i/wArms)*Math.PI*2,r:20+Math.random()*22});
+  return {x,y:GROUND_Y,color,blobPts,whitePts,alpha:1,born:performance.now()};
+}
+
+function drawSplat(s){
+  ctx.save(); ctx.globalAlpha=s.alpha; ctx.translate(s.x,s.y); ctx.scale(1,0.38);
+  ctx.beginPath();
+  s.whitePts.forEach((p,i)=>{const px=Math.cos(p.a)*p.r,py=Math.sin(p.a)*p.r;i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);});
+  ctx.fillStyle='rgba(255,255,255,0.82)'; ctx.fill();
+  ctx.beginPath();
+  s.blobPts.forEach((p,i)=>{const px=Math.cos(p.a)*p.r,py=Math.sin(p.a)*p.r;i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);});
+  ctx.fillStyle=s.color; ctx.fill(); ctx.restore();
+}
+
+function spawnConfetti(tapX,tapY){
+  const container=document.getElementById('burst-container'); if(!container) return;
+  const msg=document.createElement('div'); msg.className='surprise-text';
+  msg.textContent='🎁 You found the surprise gift!'; container.appendChild(msg);
+  setTimeout(()=>msg.remove(),3500);
+  for(let i=0;i<90;i++){
+    const bit=document.createElement('div'); bit.className='confetti-dot';
+    const a=Math.random()*360,dist=120+Math.random()*420,w=5+Math.random()*7;
+    const h=Math.random()>0.5?w*0.5:w*(1.5+Math.random()*2);
+    const color=EGG_COLORS[Math.floor(Math.random()*EGG_COLORS.length)],delay=Math.random()*150;
+    bit.style.cssText=`left:${tapX}px;top:${tapY}px;width:${w}px;height:${h}px;background:${color};position:absolute;border-radius:1px;--dx:${Math.cos(a*Math.PI/180)*dist}px;--dy:${Math.sin(a*Math.PI/180)*dist+380}px;--rot:${Math.random()*900}deg;animation:confettiBit 1.9s cubic-bezier(0.15,0.5,0.4,1) ${delay}ms forwards;`;
+    container.appendChild(bit); setTimeout(()=>bit.remove(),2200);
+  }
+  for(let i=0;i<18;i++){
+    const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
+    const color=EGG_COLORS[Math.floor(Math.random()*EGG_COLORS.length)],size=36+Math.random()*40;
+    const a=Math.random()*360,dist=160+Math.random()*480,delay=Math.random()*200;
+    const dx=Math.cos(a*Math.PI/180)*dist,dy=Math.sin(a*Math.PI/180)*dist+300;
+    const rot=Math.random()*1080-540,curlType=Math.floor(Math.random()*3);
+    svg.setAttribute('viewBox','0 0 40 40'); svg.setAttribute('width',size); svg.setAttribute('height',size);
+    svg.style.cssText=`position:absolute;left:${tapX}px;top:${tapY}px;pointer-events:none;z-index:55;overflow:visible;--dx:${dx}px;--dy:${dy}px;--rot:${rot}deg;animation:curlyFly 2s cubic-bezier(0.1,0.6,0.35,1) ${delay}ms forwards;`;
+    const path=document.createElementNS(ns,'path');
+    path.setAttribute('fill','none'); path.setAttribute('stroke',color);
+    path.setAttribute('stroke-width','3'); path.setAttribute('stroke-linecap','round');
+    path.setAttribute('d',curlType===0?'M20,35 C5,30 5,20 20,20 C35,20 35,10 20,5':curlType===1?'M20,38 C8,35 4,25 12,18 C20,11 32,14 30,22 C28,30 18,32 15,26 C12,20 18,16 22,20':'M5,30 C5,15 15,5 25,10 C35,15 38,28 28,33 C18,38 10,32 12,24');
+    svg.appendChild(path); container.appendChild(svg); setTimeout(()=>svg.remove(),2500);
+  }
+}
+
+// ------ Interaction -----------------------------------------
+function handleTap(clientX,clientY){
+  if(!gameActive||focusedEgg) return;
+  const rect=canvas.getBoundingClientRect(),tx=clientX-rect.left,ty=clientY-rect.top;
+  for(let i=eggs.length-1;i>=0;i--){
+    const e=eggs[i],rx=26*e.scale,ry=36*e.scale,dx=tx-e.x,dy=ty-e.y;
+    if((dx*dx)/(rx*rx)+(dy*dy)/(ry*ry)<=1){
+      focusedEgg=e; gameActive=false; clearInterval(spawnTimer); stopBunny();
+      setTimeout(()=>{showScreen(3);startLoading();},5000); return;
+    }
+  }
+}
+
+// ------ Game Loop -------------------------------------------
+function gameLoop(){
+  drawScene();
+  const now=performance.now();
+  splats=splats.filter(s=>{
+    const age=now-s.born; s.alpha=Math.max(0,1-(age-1600)/1400);
+    drawSplat(s); return s.alpha>0;
+  });
+  eggs=eggs.filter(e=>{
+    if(focusedEgg){
+      if(e===focusedEgg){
+        const tx=canvas.width/2,ty=canvas.height/2;
+        e.x+=(tx-e.x)*ZOOM_SPEED; e.y+=(ty-e.y)*ZOOM_SPEED;
+        e.scale+=(2.8-e.scale)*ZOOM_SPEED; e.rotation*=0.8;
+        const dist=Math.hypot(tx-e.x,ty-e.y);
+        if(dist<4&&!e.cracked){
+          e.cracked=true; e.crackProgress=0; playSound('crack');
+          const ci=setInterval(()=>{
+            e.crackProgress+=30/2000;
+            const shake=12*e.crackProgress;
+            e.x+=(Math.random()-0.5)*shake; e.y+=(Math.random()-0.5)*shake;
+            if(e.crackProgress>=1){e.crackProgress=1;clearInterval(ci);}
+          },30);
+          setTimeout(()=>{if(!e.popping){e.popping=true;playSound('pop');spawnConfetti(e.x,e.y);}},2000);
+        }
+        if(e.popping){e.popR+=14;drawPop(e);return e.popAlpha>0;}
+        drawEgg(e); return true;
+      }else{
+        ctx.globalAlpha=Math.max(0,(ctx.globalAlpha||1)-0.15);
+        drawEgg(e); ctx.globalAlpha=1.0; return false;
+      }
+    }
+    e.vy=Math.min(e.vy+e.acc,7.5); e.y+=e.vy; e.x+=e.vx; e.rotation+=e.rotSpeed;
+   
+    if (e.y + 36*e.scale >= GROUND_Y) {
+  playSound('splat');
+  splats.push(createSplat(e.x, e.color));
+  missedCount++;
+  const numEl = document.getElementById('missed-num');
+  if (numEl) numEl.textContent = missedCount;
+  return false;
+}
+    drawEgg(e); return e.alive;
+  });
+  if(gameActive||focusedEgg||splats.length>0) requestAnimationFrame(gameLoop);
+}
+
+function dramaticEntrance(){
+  // ✅ reduced from 22 to 8 initial eggs so screen isn't flooded at the start
+  for(let i=0;i<8;i++) setTimeout(()=>eggs.push(createEgg(null,true)),i*80);
+  setTimeout(()=>{
+    eggs.forEach(e=>{e.vy=EGG_MIN_SPD+Math.random()*(EGG_MAX_SPD-EGG_MIN_SPD);});
+    spawnTimer=setInterval(()=>{if(gameActive)eggs.push(createEgg());},SPAWN_RATE);
+  },2200);
+}
+
+function initGame(){
+  canvas=document.getElementById('egg-canvas');
+  ctx=canvas.getContext('2d');
+  eggs=[]; splats=[]; focusedEgg=null; gameActive=true;
+  bunnyDone=false; bunnyVisible=false;
+  if(bunnyEl){bunnyEl.remove();bunnyEl=null;} clearInterval(bunnyTimer);
+  preloadSounds();
+  function resize(){
+    canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+    GROUND_Y=canvas.height-85; buildFlowers(); buildClouds();
+  }
+  resize(); window.addEventListener('resize',resize);
+  canvas.addEventListener('click',e=>handleTap(e.clientX,e.clientY));
+  canvas.addEventListener('touchstart',e=>{e.preventDefault();handleTap(e.touches[0].clientX,e.touches[0].clientY);},{passive:false});
+  // create missed eggs counter
+const missedBox = document.createElement('div');
+missedBox.className = 'missed-eggs-container';
+missedBox.id = 'missed-box';
+missedBox.innerHTML = '🥚 Missed: <span class="missed-count" id="missed-num">0</span>';
+document.getElementById('screen-2').appendChild(missedBox);
+missedCount = 0;
+  dramaticEntrance(); startBunnyScheduler(); gameLoop();
+}
