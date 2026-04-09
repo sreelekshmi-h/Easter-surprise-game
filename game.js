@@ -1,7 +1,3 @@
-Gmail	Sree Lekshmi H <sreelekshmih4@gmail.com>
-(no subject)
-Sreelekshmi Harikumar <sreelekshmi.lechu666@gmail.com>	Thu, Apr 9, 2026 at 11:02 AM
-To: Sree Lekshmi H <sreelekshmih4@gmail.com>
 // ============================================================
 //  game.js  —  Egg Falling Game (Cinematic Slow-Cracking Final)
 //  Ground: smooth hills + scattered depth flower meadow
