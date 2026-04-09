@@ -9,7 +9,7 @@ After the prank hits, the site asks them to do the same thing to one of their fr
 ## 🌐 Live Demo
 
 > **[🔗 Try it here](https://easter-surprise.vercel.app/)**
-> example personalized link:[](https://easter-surprise.vercel.app/?from=Arjun&to=Rahul)
+> **example personalized link:[click here](https://easter-surprise.vercel.app/?from=Arjun&to=Rahul)**
 
 ##  How It Works
 You create a link with your name + friend's name
