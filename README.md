@@ -9,8 +9,7 @@ After the prank hits, the site asks them to do the same thing to one of their fr
 ## 🌐 Live Demo
 
 > **[🔗 Try it here](https://easter-surprise.vercel.app/)**
-
----
+> example personalized link:[](https://easter-surprise.vercel.app/?from=Arjun&to=Rahul)
 
 ##  How It Works
 You create a link with your name + friend's name
@@ -94,7 +93,6 @@ The site generates this automatically on the last screen — just enter the name
 | **Sreelekshmi Harikumar* | `game.js`, `loading.js`, `transitions.js` — game logic, screen switching, sound |
 | **Sree Lekshmi H** | `index.html`, `style.css` — UI design, animations, asset collection |
 
----
 
 ## 📦 Assets
 | File | Source |
